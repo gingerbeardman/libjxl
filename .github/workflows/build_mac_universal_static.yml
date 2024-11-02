@@ -1,4 +1,4 @@
-name: Build (Mac, Universal)
+name: Build (Mac, Universal, Static)
 on: [push]
 jobs:
   build:
@@ -40,6 +40,16 @@ jobs:
           else
             ./deps.sh
           fi
+      - name: Patch FindAtomics
+        run: |
+          mkdir -p cmake_local/modules
+          cat > cmake_local/modules/FindAtomics.cmake << 'EOL'
+          if(APPLE)
+            set(ATOMICS_FOUND TRUE)
+            set(HAS_BUILTIN_ATOMICS TRUE)
+            message(STATUS "Using native Apple atomic operations")
+          endif()
+          EOL
       - name: Build
         env:
           CIBW_ARCHS_MACOS: "auto universal2"
@@ -54,12 +64,13 @@ jobs:
               export CFLAGS='-target x86_64-apple-macos10.15'
               export CXXFLAGS='-target x86_64-apple-macos10.15 -std=c++17'
               export CMAKE_OSX_ARCHITECTURES='x86_64'
+              export CMAKE_PREFIX_PATH='\${PWD}/cmake_local/modules'
               
               cmake -B\${PWD}/build -H\${PWD} \\
                 -DCMAKE_BUILD_TYPE=Release \\
                 -GNinja \\
-                -DBUILD_SHARED_LIBS=OFF \\
                 -DJPEGXL_STATIC=ON \\
+                -DBUILD_SHARED_LIBS=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI=ON \\
                 -DJPEGXL_ENABLE_MANPAGES=OFF \\
@@ -75,8 +86,9 @@ jobs:
                 -DCMAKE_THREAD_LIBS_INIT='-pthread' \\
                 -DTHREADS_PREFER_PTHREAD_FLAG=ON \\
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \\
+                -DCMAKE_MODULE_PATH='\${PWD}/cmake_local/modules' \\
                 -DCMAKE_CXX_STANDARD=17 && \\
-              ninja cjxl djxl
+              cmake --build \${PWD}/build -- all
             "
           else
             export PATH=/opt/homebrew/opt/llvm/bin:$PATH
@@ -86,12 +98,13 @@ jobs:
             export CFLAGS="-target arm64-apple-macos11"
             export CXXFLAGS="-target arm64-apple-macos11 -std=c++17"
             export CMAKE_OSX_ARCHITECTURES="arm64"
+            export CMAKE_PREFIX_PATH="${PWD}/cmake_local/modules"
             
             cmake -B${PWD}/build -H${PWD} \
               -DCMAKE_BUILD_TYPE=Release \
               -GNinja \
-              -DBUILD_SHARED_LIBS=OFF \
               -DJPEGXL_STATIC=ON \
+              -DBUILD_SHARED_LIBS=OFF \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
               -DJPEGXL_ENABLE_MANPAGES=OFF \
@@ -107,10 +120,10 @@ jobs:
               -DCMAKE_THREAD_LIBS_INIT="-pthread" \
               -DTHREADS_PREFER_PTHREAD_FLAG=ON \
               -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+              -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules" \
               -DCMAKE_CXX_STANDARD=17 && \
-            ninja cjxl djxl
+            cmake --build ${PWD}/build -- all
           fi
-      # Rest of the workflow remains the same...
       - name: Calculate checksum
         run: |
           shasum -a 256 build/tools/cjxl
@@ -132,3 +145,35 @@ jobs:
           files: build/tools/jpeg-xl-macos-${{ matrix.arch }}-static.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-universal:
+    needs: build
+    runs-on: macos-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download x86_64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries-mac-x86_64
+          path: x86_64
+      - name: Download arm64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries-mac-arm64
+          path: arm64
+      - name: Create Universal Binary
+        run: |
+          mkdir -p universal
+          chmod +x x86_64/tools/cjxl x86_64/tools/djxl arm64/tools/cjxl arm64/tools/djxl
+          lipo -create -output universal/cjxl x86_64/tools/cjxl arm64/tools/cjxl
+          lipo -create -output universal/djxl x86_64/tools/djxl arm64/tools/djxl
+      - name: Zip Universal Binary
+        run: cd universal && zip jpeg-xl-macos-universal-static.zip cjxl djxl
+      - name: Release Universal Binary
+        uses: softprops/action-gh-release@v2
+        with:
+          files: universal/jpeg-xl-macos-universal-static.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+permissions:
+  contents: write
