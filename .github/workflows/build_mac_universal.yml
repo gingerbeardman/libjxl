@@ -66,7 +66,12 @@ jobs:
               export CXXFLAGS='-target x86_64-apple-macos10.15 -std=c++17'
               export CMAKE_OSX_ARCHITECTURES='x86_64'
               export CMAKE_PREFIX_PATH='\${PWD}/cmake_local/modules'
-              ./ci.sh release -DJPEGXL_STATIC=ON \\
+              
+              # Override ci.sh to remove 'doc' target
+              cmake -B\${PWD}/build -H\${PWD} \\
+                -DCMAKE_BUILD_TYPE=Release \\
+                -GNinja \\
+                -DJPEGXL_STATIC=ON \\
                 -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI=ON \\
                 -DJPEGXL_ENABLE_MANPAGES=OFF \\
@@ -80,13 +85,11 @@ jobs:
                 -DBUILD_TESTING=OFF \\
                 -DCMAKE_OSX_ARCHITECTURES=\${CMAKE_OSX_ARCHITECTURES} \\
                 -DCMAKE_THREAD_LIBS_INIT='-pthread' \\
-                -DCMAKE_HAVE_THREADS_LIBRARY=1 \\
-                -DCMAKE_USE_WIN32_THREADS_INIT=0 \\
-                -DCMAKE_USE_PTHREADS_INIT=1 \\
                 -DTHREADS_PREFER_PTHREAD_FLAG=ON \\
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \\
                 -DCMAKE_MODULE_PATH='\${PWD}/cmake_local/modules' \\
-                -DCMAKE_CXX_STANDARD=17
+                -DCMAKE_CXX_STANDARD=17 && \\
+              cmake --build \${PWD}/build -- all
             "
           else
             export PATH=/opt/homebrew/opt/llvm/bin:$PATH
@@ -97,7 +100,12 @@ jobs:
             export CXXFLAGS="-target arm64-apple-macos11 -std=c++17"
             export CMAKE_OSX_ARCHITECTURES="arm64"
             export CMAKE_PREFIX_PATH="${PWD}/cmake_local/modules"
-            ./ci.sh release -DJPEGXL_STATIC=ON \
+            
+            # Override ci.sh to remove 'doc' target
+            cmake -B${PWD}/build -H${PWD} \
+              -DCMAKE_BUILD_TYPE=Release \
+              -GNinja \
+              -DJPEGXL_STATIC=ON \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
               -DJPEGXL_ENABLE_MANPAGES=OFF \
@@ -111,13 +119,11 @@ jobs:
               -DBUILD_TESTING=OFF \
               -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES} \
               -DCMAKE_THREAD_LIBS_INIT="-pthread" \
-              -DCMAKE_HAVE_THREADS_LIBRARY=1 \
-              -DCMAKE_USE_WIN32_THREADS_INIT=0 \
-              -DCMAKE_USE_PTHREADS_INIT=1 \
               -DTHREADS_PREFER_PTHREAD_FLAG=ON \
               -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
               -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules" \
-              -DCMAKE_CXX_STANDARD=17
+              -DCMAKE_CXX_STANDARD=17 && \
+            cmake --build ${PWD}/build -- all
           fi
       - name: Calculate checksum
         run: |
