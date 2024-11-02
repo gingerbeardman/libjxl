@@ -46,10 +46,46 @@ jobs:
         run: |
           mkdir -p cmake_local/modules
           cat > cmake_local/modules/FindAtomics.cmake << 'EOL'
+          include(CheckCXXSourceCompiles)
+          include(CMakePushCheckState)
+
           if(APPLE)
             set(ATOMICS_FOUND TRUE)
             set(HAS_BUILTIN_ATOMICS TRUE)
-            message(STATUS "Using native Apple atomic operations")
+          else()
+            cmake_push_check_state()
+            set(atomics_test_source "
+              #include <atomic>
+              #include <cstdint>
+              int main() {
+                std::atomic<uint64_t> x(0);
+                x.fetch_add(1, std::memory_order_relaxed);
+                return 0;
+              }
+            ")
+            check_cxx_source_compiles("${atomics_test_source}" ATOMICS_LOCK_FREE_INSTRUCTIONS)
+            if(NOT ATOMICS_LOCK_FREE_INSTRUCTIONS)
+              set(CMAKE_REQUIRED_LIBRARIES atomic)
+              check_cxx_source_compiles("${atomics_test_source}" ATOMICS_IN_LIBRARY)
+              if(ATOMICS_IN_LIBRARY)
+                set(ATOMICS_LIBRARIES atomic)
+              endif()
+            endif()
+            cmake_pop_check_state()
+            if(ATOMICS_LOCK_FREE_INSTRUCTIONS OR ATOMICS_IN_LIBRARY)
+              set(ATOMICS_FOUND TRUE)
+            endif()
+          endif()
+
+          if(ATOMICS_FOUND)
+            if(NOT TARGET Atomics::Atomics)
+              add_library(Atomics::Atomics INTERFACE IMPORTED)
+              if(DEFINED ATOMICS_LIBRARIES)
+                set_target_properties(Atomics::Atomics PROPERTIES
+                  INTERFACE_LINK_LIBRARIES "${ATOMICS_LIBRARIES}")
+              endif()
+            endif()
+            message(STATUS "Using atomic operations - built-in")
           endif()
           EOL
 
@@ -62,11 +98,10 @@ jobs:
             export PATH=/usr/local/opt/llvm/bin:$PATH
             export CMAKE_PREFIX_PATH=/usr/local/opt/giflib:/usr/local/opt/jpeg-turbo:/usr/local/opt/libpng:/usr/local/opt/zlib
             arch -x86_64 /bin/bash -c "
-              # Set optimization flags for speed
-              export CMAKE_CXX_FLAGS='-DSKCMS_PORTABLE -std=c++17 -O3 -DNDEBUG -fPIC'
+              export CMAKE_CXX_FLAGS='-DSKCMS_PORTABLE -std=c++17 -O3 -DNDEBUG'
               export LDFLAGS='-L\$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,\$HOMEBREW_PREFIX/opt/llvm@15/lib/c++'
-              export CFLAGS='-target x86_64-apple-macos10.15 -O3 -DNDEBUG -fPIC'
-              export CXXFLAGS='-target x86_64-apple-macos10.15 -std=c++17 -O3 -DNDEBUG -fPIC'
+              export CFLAGS='-target x86_64-apple-macos10.15 -O3 -DNDEBUG'
+              export CXXFLAGS='-target x86_64-apple-macos10.15 -std=c++17 -O3 -DNDEBUG'
               export CMAKE_OSX_ARCHITECTURES='x86_64'
               
               cmake -B\${PWD}/build -H\${PWD} \\
@@ -90,16 +125,17 @@ jobs:
                 -DCMAKE_THREAD_LIBS_INIT='-pthread' \\
                 -DTHREADS_PREFER_PTHREAD_FLAG=ON \\
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \\
+                -DCMAKE_MODULE_PATH=\${PWD}/cmake_local/modules \\
                 -DCMAKE_CXX_STANDARD=17 && \\
               cmake --build \${PWD}/build -- cjxl djxl
             "
           else
             export PATH=/opt/homebrew/opt/llvm/bin:$PATH
             export CMAKE_PREFIX_PATH=/opt/homebrew/opt/giflib:/opt/homebrew/opt/jpeg-turbo:/opt/homebrew/opt/libpng:/opt/homebrew/opt/zlib
-            export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE -std=c++17 -O3 -DNDEBUG -fPIC"
+            export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE -std=c++17 -O3 -DNDEBUG"
             export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
-            export CFLAGS="-target arm64-apple-macos11 -O3 -DNDEBUG -fPIC"
-            export CXXFLAGS="-target arm64-apple-macos11 -std=c++17 -O3 -DNDEBUG -fPIC"
+            export CFLAGS="-target arm64-apple-macos11 -O3 -DNDEBUG"
+            export CXXFLAGS="-target arm64-apple-macos11 -std=c++17 -O3 -DNDEBUG"
             export CMAKE_OSX_ARCHITECTURES="arm64"
             
             cmake -B${PWD}/build -H${PWD} \
@@ -123,6 +159,7 @@ jobs:
               -DCMAKE_THREAD_LIBS_INIT="-pthread" \
               -DTHREADS_PREFER_PTHREAD_FLAG=ON \
               -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+              -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules" \
               -DCMAKE_CXX_STANDARD=17 && \
             cmake --build ${PWD}/build -- cjxl djxl
           fi
