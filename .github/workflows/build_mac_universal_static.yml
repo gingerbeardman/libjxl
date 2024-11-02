@@ -46,48 +46,18 @@ jobs:
         run: |
           mkdir -p cmake_local/modules
           cat > cmake_local/modules/FindAtomics.cmake << 'EOL'
-          include(CheckCXXSourceCompiles)
-          include(CMakePushCheckState)
-
           if(APPLE)
             set(ATOMICS_FOUND TRUE)
             set(HAS_BUILTIN_ATOMICS TRUE)
-          else()
-            cmake_push_check_state()
-            set(atomics_test_source "
-              #include <atomic>
-              #include <cstdint>
-              int main() {
-                std::atomic<uint64_t> x(0);
-                x.fetch_add(1, std::memory_order_relaxed);
-                return 0;
-              }
-            ")
-            check_cxx_source_compiles("${atomics_test_source}" ATOMICS_LOCK_FREE_INSTRUCTIONS)
-            if(NOT ATOMICS_LOCK_FREE_INSTRUCTIONS)
-              set(CMAKE_REQUIRED_LIBRARIES atomic)
-              check_cxx_source_compiles("${atomics_test_source}" ATOMICS_IN_LIBRARY)
-              if(ATOMICS_IN_LIBRARY)
-                set(ATOMICS_LIBRARIES atomic)
-              endif()
-            endif()
-            cmake_pop_check_state()
-            if(ATOMICS_LOCK_FREE_INSTRUCTIONS OR ATOMICS_IN_LIBRARY)
-              set(ATOMICS_FOUND TRUE)
-            endif()
-          endif()
-
-          if(ATOMICS_FOUND)
-            if(NOT TARGET Atomics::Atomics)
-              add_library(Atomics::Atomics INTERFACE IMPORTED)
-              if(DEFINED ATOMICS_LIBRARIES)
-                set_target_properties(Atomics::Atomics PROPERTIES
-                  INTERFACE_LINK_LIBRARIES "${ATOMICS_LIBRARIES}")
-              endif()
-            endif()
-            message(STATUS "Using atomic operations - built-in")
+            message(STATUS "Using native Apple atomic operations")
           endif()
           EOL
+
+      - name: Patch zlib
+        run: |
+          echo '#include <unistd.h>' > zlib_patch.h
+          cat third_party/zlib/gzlib.c >> zlib_patch.h
+          mv zlib_patch.h third_party/zlib/gzlib.c
 
       - name: Build
         env:
@@ -100,7 +70,7 @@ jobs:
             arch -x86_64 /bin/bash -c "
               export CMAKE_CXX_FLAGS='-DSKCMS_PORTABLE -std=c++17 -O3 -DNDEBUG'
               export LDFLAGS='-L\$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,\$HOMEBREW_PREFIX/opt/llvm@15/lib/c++'
-              export CFLAGS='-target x86_64-apple-macos10.15 -O3 -DNDEBUG'
+              export CFLAGS='-target x86_64-apple-macos10.15 -O3 -DNDEBUG -D_DARWIN_C_SOURCE'
               export CXXFLAGS='-target x86_64-apple-macos10.15 -std=c++17 -O3 -DNDEBUG'
               export CMAKE_OSX_ARCHITECTURES='x86_64'
               
@@ -134,7 +104,7 @@ jobs:
             export CMAKE_PREFIX_PATH=/opt/homebrew/opt/giflib:/opt/homebrew/opt/jpeg-turbo:/opt/homebrew/opt/libpng:/opt/homebrew/opt/zlib
             export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE -std=c++17 -O3 -DNDEBUG"
             export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
-            export CFLAGS="-target arm64-apple-macos11 -O3 -DNDEBUG"
+            export CFLAGS="-target arm64-apple-macos11 -O3 -DNDEBUG -D_DARWIN_C_SOURCE"
             export CXXFLAGS="-target arm64-apple-macos11 -std=c++17 -O3 -DNDEBUG"
             export CMAKE_OSX_ARCHITECTURES="arm64"
             
