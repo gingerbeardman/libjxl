@@ -50,10 +50,10 @@ jobs:
             export PATH=/usr/local/opt/llvm/bin:$PATH
             export CMAKE_PREFIX_PATH=/usr/local/opt/giflib:/usr/local/opt/jpeg-turbo:/usr/local/opt/libpng:/usr/local/opt/zlib
             arch -x86_64 /bin/bash -c '
-              export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE"
+              export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE -std=c++17"
               export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
               export CFLAGS="-target x86_64-apple-macos10.15"
-              export CXXFLAGS="-target x86_64-apple-macos10.15"
+              export CXXFLAGS="-target x86_64-apple-macos10.15 -std=c++17"
               export CMAKE_OSX_ARCHITECTURES="x86_64"
               export CMAKE_OSX_SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
               ./ci.sh release -DJPEGXL_STATIC=ON \
@@ -69,21 +69,25 @@ jobs:
                 -DJPEGXL_ENABLE_BENCHMARK=OFF \
                 -DBUILD_TESTING=OFF \
                 -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES} \
-                -DCMAKE_THREAD_LIBS_INIT="-lpthread" \
+                -DCMAKE_THREAD_LIBS_INIT="-pthread" \
                 -DCMAKE_HAVE_THREADS_LIBRARY=1 \
                 -DCMAKE_USE_WIN32_THREADS_INIT=0 \
                 -DCMAKE_USE_PTHREADS_INIT=1 \
                 -DTHREADS_PREFER_PTHREAD_FLAG=ON \
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
-                -DATOMICS_REQUIRE_LINK_CORE=ON \
-                -DJPEGXL_ENABLE_TRANSCODE=OFF'
+                -DJPEGXL_ENABLE_TRANSCODE=OFF \
+                -DCMAKE_C_FLAGS_INIT="-O3" \
+                -DCMAKE_CXX_FLAGS_INIT="-O3" \
+                -DPTHREAD_LIBRARY="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libpthread.tbd" \
+                -DPTHREAD_INCLUDE_DIR="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include" \
+                -DCMAKE_CXX_STANDARD=17'
           else
             export PATH=/opt/homebrew/opt/llvm/bin:$PATH
             export CMAKE_PREFIX_PATH=/opt/homebrew/opt/giflib:/opt/homebrew/opt/jpeg-turbo:/opt/homebrew/opt/libpng:/opt/homebrew/opt/zlib
-            export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE"
+            export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE -std=c++17"
             export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
             export CFLAGS="-target arm64-apple-macos11"
-            export CXXFLAGS="-target arm64-apple-macos11"
+            export CXXFLAGS="-target arm64-apple-macos11 -std=c++17"
             export CMAKE_OSX_ARCHITECTURES="arm64"
             export CMAKE_OSX_SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
             ./ci.sh release -DJPEGXL_STATIC=ON \
@@ -99,14 +103,18 @@ jobs:
               -DJPEGXL_ENABLE_BENCHMARK=OFF \
               -DBUILD_TESTING=OFF \
               -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES} \
-              -DCMAKE_THREAD_LIBS_INIT="-lpthread" \
+              -DCMAKE_THREAD_LIBS_INIT="-pthread" \
               -DCMAKE_HAVE_THREADS_LIBRARY=1 \
               -DCMAKE_USE_WIN32_THREADS_INIT=0 \
               -DCMAKE_USE_PTHREADS_INIT=1 \
               -DTHREADS_PREFER_PTHREAD_FLAG=ON \
               -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
-              -DATOMICS_REQUIRE_LINK_CORE=ON \
-              -DJPEGXL_ENABLE_TRANSCODE=OFF
+              -DJPEGXL_ENABLE_TRANSCODE=OFF \
+              -DCMAKE_C_FLAGS_INIT="-O3" \
+              -DCMAKE_CXX_FLAGS_INIT="-O3" \
+              -DPTHREAD_LIBRARY="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libpthread.tbd" \
+              -DPTHREAD_INCLUDE_DIR="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include" \
+              -DCMAKE_CXX_STANDARD=17
           fi
       - name: Calculate checksum
         run: |
