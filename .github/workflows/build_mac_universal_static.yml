@@ -99,6 +99,7 @@ jobs:
             export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
             export LIBTOOL=libtool
             export CMAKE_EXE_LINKER_FLAGS='-Wl,-dead_strip'
+            export BUILD_STATIC_EXECUTABLES=OFF
             export CFLAGS="-target arm64-apple-macos11"
             export CXXFLAGS="-target arm64-apple-macos11 -std=c++17"
             export CMAKE_OSX_ARCHITECTURES="arm64"
@@ -111,6 +112,8 @@ jobs:
               -DBUILD_SHARED_LIBS=OFF \
               -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
               -DCMAKE_EXE_LINKER_FLAGS='-Wl,-dead_strip' \
+              -DCMAKE_SKIP_RPATH=ON \
+              -DBUILD_STATIC_EXECUTABLES=OFF \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
               -DJPEGXL_ENABLE_MANPAGES=OFF \
