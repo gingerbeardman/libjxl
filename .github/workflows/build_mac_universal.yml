@@ -26,7 +26,6 @@ jobs:
       - name: Install architecture-specific Homebrew
         run: |
           if [ "${{ matrix.arch }}" == "x86_64" ]; then
-            # Install x86_64 version of Homebrew if on ARM Mac
             if [ -d /opt/homebrew ]; then
               arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
             fi
@@ -67,11 +66,11 @@ jobs:
               export CMAKE_OSX_ARCHITECTURES='x86_64'
               export CMAKE_PREFIX_PATH='\${PWD}/cmake_local/modules'
               
-              # Override ci.sh to remove 'doc' target
               cmake -B\${PWD}/build -H\${PWD} \\
                 -DCMAKE_BUILD_TYPE=Release \\
                 -GNinja \\
-                -DJPEGXL_STATIC=ON \\
+                -DJPEGXL_STATIC=OFF \\
+                -DBUILD_SHARED_LIBS=ON \\
                 -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI=ON \\
                 -DJPEGXL_ENABLE_MANPAGES=OFF \\
@@ -101,11 +100,11 @@ jobs:
             export CMAKE_OSX_ARCHITECTURES="arm64"
             export CMAKE_PREFIX_PATH="${PWD}/cmake_local/modules"
             
-            # Override ci.sh to remove 'doc' target
             cmake -B${PWD}/build -H${PWD} \
               -DCMAKE_BUILD_TYPE=Release \
               -GNinja \
-              -DJPEGXL_STATIC=ON \
+              -DJPEGXL_STATIC=OFF \
+              -DBUILD_SHARED_LIBS=ON \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
               -DJPEGXL_ENABLE_MANPAGES=OFF \
@@ -136,14 +135,19 @@ jobs:
           path: |
             build/tools/cjxl
             build/tools/djxl
+            build/lib/libjxl*.dylib
       - name: Zip
         if: startsWith(github.ref, 'refs/tags/')
-        run: cd build/tools && zip jpeg-xl-macos-${{ matrix.arch }}-static.zip cjxl djxl
+        run: |
+          cd build/tools
+          mkdir -p libs
+          cp ../lib/libjxl*.dylib libs/
+          zip -r jpeg-xl-macos-${{ matrix.arch }}.zip cjxl djxl libs/
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: build/tools/jpeg-xl-macos-${{ matrix.arch }}-static.zip
+          files: build/tools/jpeg-xl-macos-${{ matrix.arch }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -164,16 +168,20 @@ jobs:
           path: arm64
       - name: Create Universal Binary
         run: |
-          mkdir -p universal
+          mkdir -p universal/libs
           chmod +x x86_64/tools/cjxl x86_64/tools/djxl arm64/tools/cjxl arm64/tools/djxl
           lipo -create -output universal/cjxl x86_64/tools/cjxl arm64/tools/cjxl
           lipo -create -output universal/djxl x86_64/tools/djxl arm64/tools/djxl
+          for lib in x86_64/lib/libjxl*.dylib; do
+            basename=$(basename "$lib")
+            lipo -create -output universal/libs/"$basename" x86_64/lib/"$basename" arm64/lib/"$basename"
+          done
       - name: Zip Universal Binary
-        run: cd universal && zip jpeg-xl-macos-universal-static.zip cjxl djxl
+        run: cd universal && zip -r jpeg-xl-macos-universal.zip cjxl djxl libs/
       - name: Release Universal Binary
         uses: softprops/action-gh-release@v2
         with:
-          files: universal/jpeg-xl-macos-universal-static.zip
+          files: universal/jpeg-xl-macos-universal.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 permissions:
