@@ -50,10 +50,10 @@ jobs:
             export PATH=/usr/local/opt/llvm/bin:$PATH
             export CMAKE_PREFIX_PATH=/usr/local/opt/giflib:/usr/local/opt/jpeg-turbo:/usr/local/opt/libpng:/usr/local/opt/zlib
             arch -x86_64 /bin/bash -c '
-              export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE -fatomic"
+              export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE"
               export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
-              export CFLAGS="-target x86_64-apple-macos10.15 -fatomic"
-              export CXXFLAGS="-target x86_64-apple-macos10.15 -fatomic"
+              export CFLAGS="-target x86_64-apple-macos10.15"
+              export CXXFLAGS="-target x86_64-apple-macos10.15"
               export CMAKE_OSX_ARCHITECTURES="x86_64"
               export CMAKE_OSX_SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
               ./ci.sh release -DJPEGXL_STATIC=ON \
@@ -74,16 +74,16 @@ jobs:
                 -DCMAKE_USE_WIN32_THREADS_INIT=0 \
                 -DCMAKE_USE_PTHREADS_INIT=1 \
                 -DTHREADS_PREFER_PTHREAD_FLAG=ON \
-                -DCMAKE_C_FLAGS="-fatomic" \
-                -DCMAKE_CXX_FLAGS="-fatomic" \
+                -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
+                -DATOMICS_REQUIRE_LINK_CORE=ON \
                 -DJPEGXL_ENABLE_TRANSCODE=OFF'
           else
             export PATH=/opt/homebrew/opt/llvm/bin:$PATH
             export CMAKE_PREFIX_PATH=/opt/homebrew/opt/giflib:/opt/homebrew/opt/jpeg-turbo:/opt/homebrew/opt/libpng:/opt/homebrew/opt/zlib
-            export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE -fatomic"
+            export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE"
             export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
-            export CFLAGS="-target arm64-apple-macos11 -fatomic"
-            export CXXFLAGS="-target arm64-apple-macos11 -fatomic"
+            export CFLAGS="-target arm64-apple-macos11"
+            export CXXFLAGS="-target arm64-apple-macos11"
             export CMAKE_OSX_ARCHITECTURES="arm64"
             export CMAKE_OSX_SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
             ./ci.sh release -DJPEGXL_STATIC=ON \
@@ -104,8 +104,8 @@ jobs:
               -DCMAKE_USE_WIN32_THREADS_INIT=0 \
               -DCMAKE_USE_PTHREADS_INIT=1 \
               -DTHREADS_PREFER_PTHREAD_FLAG=ON \
-              -DCMAKE_C_FLAGS="-fatomic" \
-              -DCMAKE_CXX_FLAGS="-fatomic" \
+              -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+              -DATOMICS_REQUIRE_LINK_CORE=ON \
               -DJPEGXL_ENABLE_TRANSCODE=OFF
           fi
       - name: Calculate checksum
