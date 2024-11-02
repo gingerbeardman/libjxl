@@ -71,6 +71,7 @@ jobs:
                 -GNinja \\
                 -DJPEGXL_STATIC=ON \\
                 -DBUILD_SHARED_LIBS=OFF \\
+                -DJPEGXL_BUNDLE_LIBCXX=ON \\
                 -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI=ON \\
                 -DJPEGXL_ENABLE_MANPAGES=OFF \\
@@ -105,6 +106,7 @@ jobs:
               -GNinja \
               -DJPEGXL_STATIC=ON \
               -DBUILD_SHARED_LIBS=OFF \
+              -DJPEGXL_BUNDLE_LIBCXX=ON \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
               -DJPEGXL_ENABLE_MANPAGES=OFF \
