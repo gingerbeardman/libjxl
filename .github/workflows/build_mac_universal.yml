@@ -41,6 +41,26 @@ jobs:
           else
             ./deps.sh
           fi
+      - name: Create atomic test
+        run: |
+          cat > atomic_test.cpp << 'EOL'
+          #include <atomic>
+          int main() {
+            std::atomic<int> x{0};
+            x.fetch_add(1, std::memory_order_relaxed);
+            return 0;
+          }
+          EOL
+
+      - name: Test atomic support
+        run: |
+          clang++ -o atomic_test atomic_test.cpp
+          if [ $? -eq 0 ]; then
+            echo "Atomic support available"
+          else
+            echo "Atomic support not available"
+          fi
+
       - name: Build
         env:
           CIBW_ARCHS_MACOS: "auto universal2"
@@ -56,6 +76,25 @@ jobs:
               export CXXFLAGS="-target x86_64-apple-macos10.15 -std=c++17"
               export CMAKE_OSX_ARCHITECTURES="x86_64"
               export CMAKE_OSX_SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+              
+              # Create a custom FindAtomics.cmake
+              mkdir -p cmake
+              cat > cmake/FindAtomics.cmake << '\''EOL'\''
+              include(CheckCXXSourceCompiles)
+              check_cxx_source_compiles("
+                #include <atomic>
+                int main() {
+                  std::atomic<int> x{0};
+                  x.fetch_add(1, std::memory_order_relaxed);
+                  return 0;
+                }
+              " ATOMICS_LOCK_FREE_INSTRUCTIONS)
+              
+              if(ATOMICS_LOCK_FREE_INSTRUCTIONS)
+                set(ATOMICS_FOUND TRUE)
+              endif()
+              EOL
+              
               ./ci.sh release -DJPEGXL_STATIC=ON \
                 -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
                 -DJPEGXL_ENABLE_JPEGLI=ON \
@@ -80,7 +119,8 @@ jobs:
                 -DCMAKE_CXX_FLAGS_INIT="-O3" \
                 -DPTHREAD_LIBRARY="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libpthread.tbd" \
                 -DPTHREAD_INCLUDE_DIR="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include" \
-                -DCMAKE_CXX_STANDARD=17'
+                -DCMAKE_CXX_STANDARD=17 \
+                -DCMAKE_XCODE_ATTRIBUTE_GCC_ENABLE_CPP_EXCEPTIONS=YES'
           else
             export PATH=/opt/homebrew/opt/llvm/bin:$PATH
             export CMAKE_PREFIX_PATH=/opt/homebrew/opt/giflib:/opt/homebrew/opt/jpeg-turbo:/opt/homebrew/opt/libpng:/opt/homebrew/opt/zlib
@@ -90,6 +130,25 @@ jobs:
             export CXXFLAGS="-target arm64-apple-macos11 -std=c++17"
             export CMAKE_OSX_ARCHITECTURES="arm64"
             export CMAKE_OSX_SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+
+            # Create a custom FindAtomics.cmake
+            mkdir -p cmake
+            cat > cmake/FindAtomics.cmake << 'EOL'
+            include(CheckCXXSourceCompiles)
+            check_cxx_source_compiles("
+              #include <atomic>
+              int main() {
+                std::atomic<int> x{0};
+                x.fetch_add(1, std::memory_order_relaxed);
+                return 0;
+              }
+            " ATOMICS_LOCK_FREE_INSTRUCTIONS)
+            
+            if(ATOMICS_LOCK_FREE_INSTRUCTIONS)
+              set(ATOMICS_FOUND TRUE)
+            endif()
+            EOL
+
             ./ci.sh release -DJPEGXL_STATIC=ON \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
@@ -114,7 +173,8 @@ jobs:
               -DCMAKE_CXX_FLAGS_INIT="-O3" \
               -DPTHREAD_LIBRARY="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libpthread.tbd" \
               -DPTHREAD_INCLUDE_DIR="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include" \
-              -DCMAKE_CXX_STANDARD=17
+              -DCMAKE_CXX_STANDARD=17 \
+              -DCMAKE_XCODE_ATTRIBUTE_GCC_ENABLE_CPP_EXCEPTIONS=YES
           fi
       - name: Calculate checksum
         run: |
