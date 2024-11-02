@@ -51,10 +51,9 @@ jobs:
             return 0;
           }
           EOL
-
       - name: Test atomic support
         run: |
-          clang++ -o atomic_test atomic_test.cpp
+          clang++ -std=c++17 -o atomic_test atomic_test.cpp
           if [ $? -eq 0 ]; then
             echo "Atomic support available"
           else
@@ -76,25 +75,23 @@ jobs:
               export CXXFLAGS="-target x86_64-apple-macos10.15 -std=c++17"
               export CMAKE_OSX_ARCHITECTURES="x86_64"
               export CMAKE_OSX_SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
-              
-              # Create a custom FindAtomics.cmake
-              mkdir -p cmake
-              cat > cmake/FindAtomics.cmake << '\''EOL'\''
-              include(CheckCXXSourceCompiles)
-              check_cxx_source_compiles("
-                #include <atomic>
-                int main() {
-                  std::atomic<int> x{0};
-                  x.fetch_add(1, std::memory_order_relaxed);
-                  return 0;
-                }
-              " ATOMICS_LOCK_FREE_INSTRUCTIONS)
-              
-              if(ATOMICS_LOCK_FREE_INSTRUCTIONS)
-                set(ATOMICS_FOUND TRUE)
-              endif()
-              EOL
-              
+
+              # Modify the CMake configuration to avoid atomic check
+              cat > patch.diff << '\''EOL'\''
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -259,7 +259,6 @@
+ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+ 
+ find_package(Threads REQUIRED)
+-find_package(Atomics REQUIRED)
+ 
+ if(JPEGXL_ENABLE_OPENEXR)
+   find_package(OpenEXR)
+EOL
+              patch -p1 < patch.diff
+
               ./ci.sh release -DJPEGXL_STATIC=ON \
                 -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
                 -DJPEGXL_ENABLE_JPEGLI=ON \
@@ -131,23 +128,21 @@ jobs:
             export CMAKE_OSX_ARCHITECTURES="arm64"
             export CMAKE_OSX_SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
 
-            # Create a custom FindAtomics.cmake
-            mkdir -p cmake
-            cat > cmake/FindAtomics.cmake << 'EOL'
-            include(CheckCXXSourceCompiles)
-            check_cxx_source_compiles("
-              #include <atomic>
-              int main() {
-                std::atomic<int> x{0};
-                x.fetch_add(1, std::memory_order_relaxed);
-                return 0;
-              }
-            " ATOMICS_LOCK_FREE_INSTRUCTIONS)
-            
-            if(ATOMICS_LOCK_FREE_INSTRUCTIONS)
-              set(ATOMICS_FOUND TRUE)
-            endif()
-            EOL
+            # Modify the CMake configuration to avoid atomic check
+            cat > patch.diff << 'EOL'
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -259,7 +259,6 @@
+ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+ 
+ find_package(Threads REQUIRED)
+-find_package(Atomics REQUIRED)
+ 
+ if(JPEGXL_ENABLE_OPENEXR)
+   find_package(OpenEXR)
+EOL
+            patch -p1 < patch.diff
 
             ./ci.sh release -DJPEGXL_STATIC=ON \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
