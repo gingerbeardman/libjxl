@@ -46,11 +46,12 @@ jobs:
           cat > atomic_test.cpp << 'EOL'
           #include <atomic>
           int main() {
-            std::atomic<int> x{0};
-            x.fetch_add(1, std::memory_order_relaxed);
-            return 0;
+              std::atomic<int> x(0);
+              x.fetch_add(1, std::memory_order_relaxed);
+              return 0;
           }
           EOL
+
       - name: Test atomic support
         run: |
           clang++ -std=c++17 -o atomic_test atomic_test.cpp
@@ -59,6 +60,19 @@ jobs:
           else
             echo "Atomic support not available"
           fi
+
+      - name: Patch FindAtomics
+        run: |
+          # Create a directory for local CMake modules
+          mkdir -p cmake_local/modules
+          cat > cmake_local/modules/FindAtomics.cmake << 'EOL'
+          # This module always sets ATOMICS_FOUND to TRUE for Apple platforms
+          if(APPLE)
+            set(ATOMICS_FOUND TRUE)
+            set(HAS_BUILTIN_ATOMICS TRUE)
+            message(STATUS "Using native Apple atomic operations")
+          endif()
+          EOL
 
       - name: Build
         env:
@@ -69,29 +83,14 @@ jobs:
             export PATH=/usr/local/opt/llvm/bin:$PATH
             export CMAKE_PREFIX_PATH=/usr/local/opt/giflib:/usr/local/opt/jpeg-turbo:/usr/local/opt/libpng:/usr/local/opt/zlib
             arch -x86_64 /bin/bash -c '
-              export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE -std=c++17"
+              export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE"
               export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
               export CFLAGS="-target x86_64-apple-macos10.15"
-              export CXXFLAGS="-target x86_64-apple-macos10.15 -std=c++17"
+              export CXXFLAGS="-target x86_64-apple-macos10.15"
               export CMAKE_OSX_ARCHITECTURES="x86_64"
               export CMAKE_OSX_SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
-
-              # Modify the CMake configuration to avoid atomic check
-              cat > patch.diff << '\''EOL'\''
-diff --git a/CMakeLists.txt b/CMakeLists.txt
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -259,7 +259,6 @@
- list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
- 
- find_package(Threads REQUIRED)
--find_package(Atomics REQUIRED)
- 
- if(JPEGXL_ENABLE_OPENEXR)
-   find_package(OpenEXR)
-EOL
-              patch -p1 < patch.diff
-
+              export CMAKE_PREFIX_PATH="${PWD}/cmake_local/modules"
+              
               ./ci.sh release -DJPEGXL_STATIC=ON \
                 -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
                 -DJPEGXL_ENABLE_JPEGLI=ON \
@@ -112,37 +111,19 @@ EOL
                 -DTHREADS_PREFER_PTHREAD_FLAG=ON \
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
                 -DJPEGXL_ENABLE_TRANSCODE=OFF \
-                -DCMAKE_C_FLAGS_INIT="-O3" \
-                -DCMAKE_CXX_FLAGS_INIT="-O3" \
-                -DPTHREAD_LIBRARY="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libpthread.tbd" \
-                -DPTHREAD_INCLUDE_DIR="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include" \
                 -DCMAKE_CXX_STANDARD=17 \
+                -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules" \
                 -DCMAKE_XCODE_ATTRIBUTE_GCC_ENABLE_CPP_EXCEPTIONS=YES'
           else
             export PATH=/opt/homebrew/opt/llvm/bin:$PATH
             export CMAKE_PREFIX_PATH=/opt/homebrew/opt/giflib:/opt/homebrew/opt/jpeg-turbo:/opt/homebrew/opt/libpng:/opt/homebrew/opt/zlib
-            export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE -std=c++17"
+            export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE"
             export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
             export CFLAGS="-target arm64-apple-macos11"
-            export CXXFLAGS="-target arm64-apple-macos11 -std=c++17"
+            export CXXFLAGS="-target arm64-apple-macos11"
             export CMAKE_OSX_ARCHITECTURES="arm64"
             export CMAKE_OSX_SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
-
-            # Modify the CMake configuration to avoid atomic check
-            cat > patch.diff << 'EOL'
-diff --git a/CMakeLists.txt b/CMakeLists.txt
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -259,7 +259,6 @@
- list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
- 
- find_package(Threads REQUIRED)
--find_package(Atomics REQUIRED)
- 
- if(JPEGXL_ENABLE_OPENEXR)
-   find_package(OpenEXR)
-EOL
-            patch -p1 < patch.diff
+            export CMAKE_PREFIX_PATH="${PWD}/cmake_local/modules"
 
             ./ci.sh release -DJPEGXL_STATIC=ON \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
@@ -164,11 +145,8 @@ EOL
               -DTHREADS_PREFER_PTHREAD_FLAG=ON \
               -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
               -DJPEGXL_ENABLE_TRANSCODE=OFF \
-              -DCMAKE_C_FLAGS_INIT="-O3" \
-              -DCMAKE_CXX_FLAGS_INIT="-O3" \
-              -DPTHREAD_LIBRARY="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libpthread.tbd" \
-              -DPTHREAD_INCLUDE_DIR="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include" \
               -DCMAKE_CXX_STANDARD=17 \
+              -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules" \
               -DCMAKE_XCODE_ATTRIBUTE_GCC_ENABLE_CPP_EXCEPTIONS=YES
           fi
       - name: Calculate checksum
