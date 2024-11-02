@@ -1,0 +1,144 @@
+name: Build (Mac, Universal)
+on: [push]
+jobs:
+  build:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [x86_64, arm64]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Remove Mono
+        run: sudo rm -rf /Library/Frameworks/Mono.framework &&
+          sudo pkgutil --forget com.xamarin.mono-MDK.pkg &&
+          sudo rm /etc/paths.d/mono-commands
+      - name: Set up Homebrew paths
+        run: |
+          if [ "${{ matrix.arch }}" == "x86_64" ]; then
+            echo "HOMEBREW_PREFIX=/usr/local" >> $GITHUB_ENV
+            echo "PATH=/usr/local/bin:$PATH" >> $GITHUB_ENV
+          else
+            echo "HOMEBREW_PREFIX=/opt/homebrew" >> $GITHUB_ENV
+            echo "PATH=/opt/homebrew/bin:$PATH" >> $GITHUB_ENV
+          fi
+      - name: Install architecture-specific Homebrew
+        run: |
+          if [ "${{ matrix.arch }}" == "x86_64" ]; then
+            # Install x86_64 version of Homebrew if on ARM Mac
+            if [ -d /opt/homebrew ]; then
+              arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            fi
+            arch -x86_64 brew install llvm@15 coreutils cmake giflib jpeg-turbo libpng ninja zlib doxygen
+          else
+            brew install llvm@15 coreutils cmake giflib jpeg-turbo libpng ninja zlib doxygen
+          fi
+      - name: Install more dependencies
+        run: |
+          if [ "${{ matrix.arch }}" == "x86_64" ]; then
+            arch -x86_64 ./deps.sh
+          else
+            ./deps.sh
+          fi
+      - name: Build
+        env:
+          CIBW_ARCHS_MACOS: "auto universal2"
+        run: |
+          if [ "${{ matrix.arch }}" == "x86_64" ]; then
+            export PATH=/usr/local/opt/llvm/bin:$PATH
+            export CMAKE_PREFIX_PATH=/usr/local/opt/giflib:/usr/local/opt/jpeg-turbo:/usr/local/opt/libpng:/usr/local/opt/zlib
+            arch -x86_64 /bin/bash -c '
+              export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE"
+              export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
+              export CFLAGS="-target x86_64-apple-macos10.15"
+              export CXXFLAGS="-target x86_64-apple-macos10.15"
+              export CMAKE_OSX_ARCHITECTURES="x86_64"
+              ./ci.sh release -DJPEGXL_STATIC=ON \
+                -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
+                -DJPEGXL_ENABLE_JPEGLI=ON \
+                -DJPEGXL_ENABLE_MANPAGES=OFF \
+                -DJPEGXL_ENABLE_JNI=OFF \
+                -DJPEGXL_ENABLE_SJPEG=OFF \
+                -DJPEGXL_ENABLE_DOXYGEN=OFF \
+                -DJPEGXL_ENABLE_VIEWERS=OFF \
+                -DJPEGXL_ENABLE_PLUGINS=OFF \
+                -DJPEGXL_ENABLE_OPENEXR=OFF \
+                -DJPEGXL_ENABLE_BENCHMARK=OFF \
+                -DBUILD_TESTING=OFF \
+                -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}'
+          else
+            export PATH=/opt/homebrew/opt/llvm/bin:$PATH
+            export CMAKE_PREFIX_PATH=/opt/homebrew/opt/giflib:/opt/homebrew/opt/jpeg-turbo:/opt/homebrew/opt/libpng:/opt/homebrew/opt/zlib
+            export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE"
+            export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
+            export CFLAGS="-target arm64-apple-macos11"
+            export CXXFLAGS="-target arm64-apple-macos11"
+            export CMAKE_OSX_ARCHITECTURES="arm64"
+            ./ci.sh release -DJPEGXL_STATIC=ON \
+              -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
+              -DJPEGXL_ENABLE_JPEGLI=ON \
+              -DJPEGXL_ENABLE_MANPAGES=OFF \
+              -DJPEGXL_ENABLE_JNI=OFF \
+              -DJPEGXL_ENABLE_SJPEG=OFF \
+              -DJPEGXL_ENABLE_DOXYGEN=OFF \
+              -DJPEGXL_ENABLE_VIEWERS=OFF \
+              -DJPEGXL_ENABLE_PLUGINS=OFF \
+              -DJPEGXL_ENABLE_OPENEXR=OFF \
+              -DJPEGXL_ENABLE_BENCHMARK=OFF \
+              -DBUILD_TESTING=OFF \
+              -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
+          fi
+      - name: Calculate checksum
+        run: |
+          shasum -a 256 build/tools/cjxl
+          shasum -a 256 build/tools/djxl
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-mac-${{ matrix.arch }}
+          path: |
+            build/tools/cjxl
+            build/tools/djxl
+      - name: Zip
+        if: startsWith(github.ref, 'refs/tags/')
+        run: cd build/tools && zip jpeg-xl-macos-${{ matrix.arch }}-static.zip cjxl djxl
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: build/tools/jpeg-xl-macos-${{ matrix.arch }}-static.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-universal:
+    needs: build
+    runs-on: macos-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download x86_64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries-mac-x86_64
+          path: x86_64
+      - name: Download arm64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries-mac-arm64
+          path: arm64
+      - name: Create Universal Binary
+        run: |
+          mkdir -p universal
+          chmod +x x86_64/tools/cjxl x86_64/tools/djxl arm64/tools/cjxl arm64/tools/djxl
+          lipo -create -output universal/cjxl x86_64/tools/cjxl arm64/tools/cjxl
+          lipo -create -output universal/djxl x86_64/tools/djxl arm64/tools/djxl
+      - name: Zip Universal Binary
+        run: cd universal && zip jpeg-xl-macos-universal-static.zip cjxl djxl
+      - name: Release Universal Binary
+        uses: softprops/action-gh-release@v2
+        with:
+          files: universal/jpeg-xl-macos-universal-static.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+permissions:
+  contents: write
