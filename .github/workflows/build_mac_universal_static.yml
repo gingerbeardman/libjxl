@@ -1,4 +1,4 @@
-name: Build (Mac, Universal, Static)
+name: Build (Mac, Universal Static)
 on: [push]
 jobs:
   build:
@@ -61,8 +61,6 @@ jobs:
             arch -x86_64 /bin/bash -c "
               export CMAKE_CXX_FLAGS='-DSKCMS_PORTABLE -std=c++17'
               export LDFLAGS='-L\$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,\$HOMEBREW_PREFIX/opt/llvm@15/lib/c++'
-              export LIBTOOL=libtool
-              export CMAKE_EXE_LINKER_FLAGS='-Wl,-dead_strip'
               export CFLAGS='-target x86_64-apple-macos10.15'
               export CXXFLAGS='-target x86_64-apple-macos10.15 -std=c++17'
               export CMAKE_OSX_ARCHITECTURES='x86_64'
@@ -97,9 +95,6 @@ jobs:
             export CMAKE_PREFIX_PATH=/opt/homebrew/opt/giflib:/opt/homebrew/opt/jpeg-turbo:/opt/homebrew/opt/libpng:/opt/homebrew/opt/zlib
             export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE -std=c++17"
             export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
-            export LIBTOOL=libtool
-            export CMAKE_EXE_LINKER_FLAGS='-Wl,-dead_strip'
-            export BUILD_STATIC_EXECUTABLES=OFF
             export CFLAGS="-target arm64-apple-macos11"
             export CXXFLAGS="-target arm64-apple-macos11 -std=c++17"
             export CMAKE_OSX_ARCHITECTURES="arm64"
@@ -110,10 +105,6 @@ jobs:
               -GNinja \
               -DJPEGXL_STATIC=ON \
               -DBUILD_SHARED_LIBS=OFF \
-              -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-              -DCMAKE_EXE_LINKER_FLAGS='-Wl,-dead_strip' \
-              -DCMAKE_SKIP_RPATH=ON \
-              -DBUILD_STATIC_EXECUTABLES=OFF \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
               -DJPEGXL_ENABLE_MANPAGES=OFF \
