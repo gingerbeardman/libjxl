@@ -53,60 +53,41 @@ jobs:
       - name: Build
         env:
           CIBW_ARCHS_MACOS: "auto universal2"
-          MACOSX_DEPLOYMENT_TARGET: "${{ matrix.arch == 'x86_64' && '10.15' || '11.0' }}"
         run: |
           if [ "${{ matrix.arch }}" == "x86_64" ]; then
             export PATH=/usr/local/opt/llvm/bin:$PATH
             export CMAKE_PREFIX_PATH=/usr/local/opt/giflib:/usr/local/opt/jpeg-turbo:/usr/local/opt/libpng:/usr/local/opt/zlib
-            arch -x86_64 /bin/bash -c "
-              export CMAKE_CXX_FLAGS='-DSKCMS_PORTABLE -std=c++17'
-              export LDFLAGS='-L\$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,\$HOMEBREW_PREFIX/opt/llvm@15/lib/c++'
-              export CFLAGS='-target x86_64-apple-macos10.15'
-              export CXXFLAGS='-target x86_64-apple-macos10.15 -std=c++17'
-              export CMAKE_OSX_ARCHITECTURES='x86_64'
-              export CMAKE_PREFIX_PATH='\${PWD}/cmake_local/modules'
-              
-              cmake -B\${PWD}/build -H\${PWD} \\
-                -DCMAKE_BUILD_TYPE=Release \\
-                -GNinja \\
-                -DJPEGXL_STATIC=ON \\
-                -DBUILD_SHARED_LIBS=OFF \\
-                -DJPEGXL_BUNDLE_LIBCXX=ON \\
-                -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \\
-                -DJPEGXL_ENABLE_JPEGLI=ON \\
-                -DJPEGXL_ENABLE_MANPAGES=OFF \\
-                -DJPEGXL_ENABLE_JNI=OFF \\
-                -DJPEGXL_ENABLE_SJPEG=OFF \\
-                -DJPEGXL_ENABLE_DOXYGEN=OFF \\
-                -DJPEGXL_ENABLE_VIEWERS=OFF \\
-                -DJPEGXL_ENABLE_PLUGINS=OFF \\
-                -DJPEGXL_ENABLE_OPENEXR=OFF \\
-                -DJPEGXL_ENABLE_BENCHMARK=OFF \\
-                -DBUILD_TESTING=OFF \\
-                -DCMAKE_OSX_ARCHITECTURES=\${CMAKE_OSX_ARCHITECTURES} \\
-                -DCMAKE_THREAD_LIBS_INIT='-pthread' \\
-                -DTHREADS_PREFER_PTHREAD_FLAG=ON \\
-                -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \\
-                -DCMAKE_MODULE_PATH='\${PWD}/cmake_local/modules' \\
-                -DCMAKE_CXX_STANDARD=17 && \\
-              cmake --build \${PWD}/build -- all
-            "
+            arch -x86_64 /bin/bash -c '
+              export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE"
+              export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
+              export CFLAGS="-target x86_64-apple-macos10.15"
+              export CXXFLAGS="-target x86_64-apple-macos10.15"
+              export CMAKE_OSX_ARCHITECTURES="x86_64"
+              export CMAKE_PREFIX_PATH="${PWD}/cmake_local/modules"
+              ./ci.sh release -DJPEGXL_STATIC=ON \
+                -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
+                -DJPEGXL_ENABLE_JPEGLI=ON \
+                -DJPEGXL_ENABLE_MANPAGES=OFF \
+                -DJPEGXL_ENABLE_JNI=OFF \
+                -DJPEGXL_ENABLE_SJPEG=OFF \
+                -DJPEGXL_ENABLE_DOXYGEN=OFF \
+                -DJPEGXL_ENABLE_VIEWERS=OFF \
+                -DJPEGXL_ENABLE_PLUGINS=OFF \
+                -DJPEGXL_ENABLE_OPENEXR=OFF \
+                -DJPEGXL_ENABLE_BENCHMARK=OFF \
+                -DBUILD_TESTING=OFF \
+                -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES} \
+                -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules"'
           else
             export PATH=/opt/homebrew/opt/llvm/bin:$PATH
             export CMAKE_PREFIX_PATH=/opt/homebrew/opt/giflib:/opt/homebrew/opt/jpeg-turbo:/opt/homebrew/opt/libpng:/opt/homebrew/opt/zlib
-            export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE -std=c++17"
+            export CMAKE_CXX_FLAGS="-DSKCMS_PORTABLE"
             export LDFLAGS="-L$HOMEBREW_PREFIX/opt/llvm@15/lib/c++ -Wl,-rpath,$HOMEBREW_PREFIX/opt/llvm@15/lib/c++"
             export CFLAGS="-target arm64-apple-macos11"
-            export CXXFLAGS="-target arm64-apple-macos11 -std=c++17"
+            export CXXFLAGS="-target arm64-apple-macos11"
             export CMAKE_OSX_ARCHITECTURES="arm64"
             export CMAKE_PREFIX_PATH="${PWD}/cmake_local/modules"
-            
-            cmake -B${PWD}/build -H${PWD} \
-              -DCMAKE_BUILD_TYPE=Release \
-              -GNinja \
-              -DJPEGXL_STATIC=ON \
-              -DBUILD_SHARED_LIBS=OFF \
-              -DJPEGXL_BUNDLE_LIBCXX=ON \
+            ./ci.sh release -DJPEGXL_STATIC=ON \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
               -DJPEGXL_ENABLE_MANPAGES=OFF \
@@ -119,12 +100,7 @@ jobs:
               -DJPEGXL_ENABLE_BENCHMARK=OFF \
               -DBUILD_TESTING=OFF \
               -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES} \
-              -DCMAKE_THREAD_LIBS_INIT="-pthread" \
-              -DTHREADS_PREFER_PTHREAD_FLAG=ON \
-              -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
-              -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules" \
-              -DCMAKE_CXX_STANDARD=17 && \
-            cmake --build ${PWD}/build -- all
+              -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules"
           fi
       - name: Calculate checksum
         run: |
