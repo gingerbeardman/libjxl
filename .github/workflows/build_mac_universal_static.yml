@@ -36,9 +36,9 @@ jobs:
       - name: Install more dependencies
         run: |
           if [ "${{ matrix.arch }}" == "x86_64" ]; then
-            arch -x86_64 ./ci_new.sh deps
+            arch -x86_64 ./ci.sh deps
           else
-            ./ci_new.sh deps
+            ./ci.sh deps
           fi
       - name: Patch FindAtomics  # Required from new version for proper atomic support
         run: |
@@ -66,7 +66,7 @@ jobs:
               export CMAKE_OSX_ARCHITECTURES='x86_64'
               export CMAKE_PREFIX_PATH='\${PWD}/cmake_local/modules'
               
-              ./ci_new.sh release -DJPEGXL_STATIC=ON \\
+              ./ci.sh release -DJPEGXL_STATIC=ON \\
                 -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI=ON \\
                 -DJPEGXL_ENABLE_MANPAGES=OFF \\
@@ -95,7 +95,7 @@ jobs:
             export CMAKE_OSX_ARCHITECTURES="arm64"
             export CMAKE_PREFIX_PATH="${PWD}/cmake_local/modules"
             
-            ./ci_new.sh release -DJPEGXL_STATIC=ON \
+            ./ci.sh release -DJPEGXL_STATIC=ON \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
               -DJPEGXL_ENABLE_MANPAGES=OFF \
