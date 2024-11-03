@@ -33,14 +33,7 @@ jobs:
           else
             brew install llvm@15 coreutils cmake giflib jpeg-turbo libpng ninja zlib doxygen
           fi
-      - name: Install more dependencies
-        run: |
-          if [ "${{ matrix.arch }}" == "x86_64" ]; then
-            arch -x86_64 ./ci.sh deps
-          else
-            ./ci.sh deps
-          fi
-      - name: Patch FindAtomics  # Required from new version for proper atomic support
+      - name: Patch FindAtomics
         run: |
           mkdir -p cmake_local/modules
           cat > cmake_local/modules/FindAtomics.cmake << 'EOL'
@@ -66,7 +59,11 @@ jobs:
               export CMAKE_OSX_ARCHITECTURES='x86_64'
               export CMAKE_PREFIX_PATH='\${PWD}/cmake_local/modules'
               
-              ./ci.sh release -DJPEGXL_STATIC=ON \\
+              cmake -B\${PWD}/build -H\${PWD} \\
+                -DCMAKE_BUILD_TYPE=Release \\
+                -GNinja \\
+                -DJPEGXL_STATIC=ON \\
+                -DBUILD_SHARED_LIBS=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI=ON \\
                 -DJPEGXL_ENABLE_MANPAGES=OFF \\
@@ -83,7 +80,8 @@ jobs:
                 -DTHREADS_PREFER_PTHREAD_FLAG=ON \\
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \\
                 -DCMAKE_MODULE_PATH='\${PWD}/cmake_local/modules' \\
-                -DCMAKE_CXX_STANDARD=17
+                -DCMAKE_CXX_STANDARD=17 && \\
+              cmake --build \${PWD}/build -- all
             "
           else
             export PATH=/opt/homebrew/opt/llvm/bin:$PATH
@@ -95,7 +93,11 @@ jobs:
             export CMAKE_OSX_ARCHITECTURES="arm64"
             export CMAKE_PREFIX_PATH="${PWD}/cmake_local/modules"
             
-            ./ci.sh release -DJPEGXL_STATIC=ON \
+            cmake -B${PWD}/build -H${PWD} \
+              -DCMAKE_BUILD_TYPE=Release \
+              -GNinja \
+              -DJPEGXL_STATIC=ON \
+              -DBUILD_SHARED_LIBS=OFF \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
               -DJPEGXL_ENABLE_MANPAGES=OFF \
@@ -112,7 +114,8 @@ jobs:
               -DTHREADS_PREFER_PTHREAD_FLAG=ON \
               -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
               -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules" \
-              -DCMAKE_CXX_STANDARD=17
+              -DCMAKE_CXX_STANDARD=17 && \
+            cmake --build ${PWD}/build -- all
           fi
       - name: Calculate checksum
         run: |
