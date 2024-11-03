@@ -81,7 +81,10 @@ jobs:
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \\
                 -DCMAKE_MODULE_PATH='\${PWD}/cmake_local/modules' \\
                 -DCMAKE_CXX_STANDARD=17 \\
-                -DCMAKE_EXE_LINKER_FLAGS='-Wl,-search_paths_first -Wl,-headerpad_max_install_names -Wl,-dead_strip -Wl,-dead_strip_dylibs -Wl,-bind_at_load' && \\
+                -DCMAKE_SHARED_LINKER_FLAGS='-Wl,-dead_strip -Wl,-dead_strip_dylibs -Wl,-bind_at_load' \\
+                -DCMAKE_EXE_LINKER_FLAGS='-Wl,-search_paths_first -Wl,-headerpad_max_install_names -Wl,-dead_strip -Wl,-dead_strip_dylibs -Wl,-bind_at_load' \\
+                -DCMAKE_POLICY_DEFAULT_CMP0063=NEW \\
+                -DCMAKE_POSITION_INDEPENDENT_CODE=ON && \\
               cmake --build \${PWD}/build -- cjxl djxl
             "
           else
@@ -116,7 +119,10 @@ jobs:
               -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
               -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules" \
               -DCMAKE_CXX_STANDARD=17 \
-              -DCMAKE_EXE_LINKER_FLAGS="-Wl,-search_paths_first -Wl,-headerpad_max_install_names -Wl,-dead_strip -Wl,-dead_strip_dylibs -Wl,-bind_at_load" && \
+              -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-dead_strip -Wl,-dead_strip_dylibs -Wl,-bind_at_load" \
+              -DCMAKE_EXE_LINKER_FLAGS="-Wl,-search_paths_first -Wl,-headerpad_max_install_names -Wl,-dead_strip -Wl,-dead_strip_dylibs -Wl,-bind_at_load" \
+              -DCMAKE_POLICY_DEFAULT_CMP0063=NEW \
+              -DCMAKE_POSITION_INDEPENDENT_CODE=ON && \
             cmake --build ${PWD}/build -- cjxl djxl
           fi
       - name: Calculate checksum
