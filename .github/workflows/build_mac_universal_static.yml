@@ -64,6 +64,7 @@ jobs:
                 -GNinja \\
                 -DJPEGXL_STATIC=ON \\
                 -DBUILD_SHARED_LIBS=OFF \\
+                -DJPEGXL_FORCE_SYSTEM_BROTLI=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI=ON \\
                 -DJPEGXL_ENABLE_MANPAGES=OFF \\
@@ -81,6 +82,9 @@ jobs:
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \\
                 -DCMAKE_MODULE_PATH='\${PWD}/cmake_local/modules' \\
                 -DCMAKE_CXX_STANDARD=17 \\
+                -DJPEGXL_BUNDLE_LIBPNG=ON \\
+                -DJPEGXL_BUNDLE_GIFLIB=ON \\
+                -DJPEGXL_ENABLE_TRANSCODE_JPEG=OFF \\
                 -DCMAKE_EXE_LINKER_FLAGS='-Wl,-dead_strip -Wl,-dead_strip_dylibs -Wl,-bind_at_load' && \\
               cmake --build \${PWD}/build -- cjxl djxl
             "
@@ -99,6 +103,7 @@ jobs:
               -GNinja \
               -DJPEGXL_STATIC=ON \
               -DBUILD_SHARED_LIBS=OFF \
+              -DJPEGXL_FORCE_SYSTEM_BROTLI=OFF \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
               -DJPEGXL_ENABLE_MANPAGES=OFF \
@@ -116,6 +121,9 @@ jobs:
               -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
               -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules" \
               -DCMAKE_CXX_STANDARD=17 \
+              -DJPEGXL_BUNDLE_LIBPNG=ON \
+              -DJPEGXL_BUNDLE_GIFLIB=ON \
+              -DJPEGXL_ENABLE_TRANSCODE_JPEG=OFF \
               -DCMAKE_EXE_LINKER_FLAGS="-Wl,-dead_strip -Wl,-dead_strip_dylibs -Wl,-bind_at_load" && \
             cmake --build ${PWD}/build -- cjxl djxl
           fi
