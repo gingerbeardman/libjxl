@@ -80,8 +80,9 @@ jobs:
                 -DTHREADS_PREFER_PTHREAD_FLAG=ON \\
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \\
                 -DCMAKE_MODULE_PATH='\${PWD}/cmake_local/modules' \\
-                -DCMAKE_CXX_STANDARD=17 && \\
-              cmake --build \${PWD}/build -- all
+                -DCMAKE_CXX_STANDARD=17 \\
+                -DCMAKE_EXE_LINKER_FLAGS='-Wl,-dead_strip -Wl,-dead_strip_dylibs -Wl,-bind_at_load' && \\
+              cmake --build \${PWD}/build -- cjxl djxl
             "
           else
             export PATH=/opt/homebrew/opt/llvm/bin:$PATH
@@ -114,8 +115,9 @@ jobs:
               -DTHREADS_PREFER_PTHREAD_FLAG=ON \
               -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
               -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules" \
-              -DCMAKE_CXX_STANDARD=17 && \
-            cmake --build ${PWD}/build -- all
+              -DCMAKE_CXX_STANDARD=17 \
+              -DCMAKE_EXE_LINKER_FLAGS="-Wl,-dead_strip -Wl,-dead_strip_dylibs -Wl,-bind_at_load" && \
+            cmake --build ${PWD}/build -- cjxl djxl
           fi
       - name: Calculate checksum
         run: |
