@@ -47,6 +47,8 @@ jobs:
         env:
           CIBW_ARCHS_MACOS: "auto universal2"
           MACOSX_DEPLOYMENT_TARGET: "${{ matrix.arch == 'x86_64' && '10.15' || '11.0' }}"
+          # Override CMake's automatic static flag addition
+          CMAKE_EXE_LINKER_FLAGS: "-Wl,-search_paths_first -Wl,-headerpad_max_install_names -fPIE -Wl,-pie"
         run: |
           if [ "${{ matrix.arch }}" == "x86_64" ]; then
             export PATH=/usr/local/opt/llvm/bin:$PATH
@@ -63,6 +65,7 @@ jobs:
                 -DCMAKE_BUILD_TYPE=Release \\
                 -GNinja \\
                 -DJPEGXL_STATIC=ON \\
+                -DBUILD_SHARED_LIBS=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI=ON \\
                 -DJPEGXL_ENABLE_MANPAGES=OFF \\
@@ -80,7 +83,9 @@ jobs:
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \\
                 -DCMAKE_MODULE_PATH='\${PWD}/cmake_local/modules' \\
                 -DCMAKE_MACOSX_RPATH=OFF \\
-                -DBUILD_SHARED_LIBS=OFF && \\
+                -DCMAKE_CXX_STANDARD=17 \\
+                -DCMAKE_POLICY_DEFAULT_CMP0063=NEW \\
+                -DJPEGXL_FORCE_SYSTEM_BROTLI=OFF && \\
               cmake --build \${PWD}/build -- cjxl djxl
             "
           else
@@ -97,6 +102,7 @@ jobs:
               -DCMAKE_BUILD_TYPE=Release \
               -GNinja \
               -DJPEGXL_STATIC=ON \
+              -DBUILD_SHARED_LIBS=OFF \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
               -DJPEGXL_ENABLE_MANPAGES=OFF \
@@ -114,7 +120,9 @@ jobs:
               -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
               -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules" \
               -DCMAKE_MACOSX_RPATH=OFF \
-              -DBUILD_SHARED_LIBS=OFF && \
+              -DCMAKE_CXX_STANDARD=17 \
+              -DCMAKE_POLICY_DEFAULT_CMP0063=NEW \
+              -DJPEGXL_FORCE_SYSTEM_BROTLI=OFF && \
             cmake --build ${PWD}/build -- cjxl djxl
           fi
       - name: Calculate checksum
