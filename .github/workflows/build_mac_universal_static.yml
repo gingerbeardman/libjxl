@@ -43,27 +43,6 @@ jobs:
             message(STATUS "Using native Apple atomic operations")
           endif()
           EOL
-      # Based on investigation of CMake's handling of static linking on MacOS
-      - name: Create CMake toolchain file
-        run: |
-          cat > macos_toolchain.cmake << 'EOL'
-          set(CMAKE_SYSTEM_NAME Darwin)
-          set(CMAKE_SYSTEM_PROCESSOR ${{ matrix.arch }})
-          
-          set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-          set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-          set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-          set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
-          
-          set(CMAKE_MACOSX_RPATH OFF)
-          set(CMAKE_SKIP_RPATH ON)
-          set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
-          
-          # Prevent CMake from adding -static
-          set(CMAKE_EXE_LINKER_FLAGS_INIT "")
-          set(CMAKE_SHARED_LINKER_FLAGS_INIT "")
-          set(CMAKE_MODULE_LINKER_FLAGS_INIT "")
-          EOL
       - name: Build
         env:
           CIBW_ARCHS_MACOS: "auto universal2"
@@ -78,13 +57,12 @@ jobs:
               export CFLAGS='-target x86_64-apple-macos10.15'
               export CXXFLAGS='-target x86_64-apple-macos10.15 -std=c++17'
               export CMAKE_OSX_ARCHITECTURES='x86_64'
+              export CMAKE_PREFIX_PATH='\${PWD}/cmake_local/modules'
               
               cmake -B\${PWD}/build -H\${PWD} \\
                 -DCMAKE_BUILD_TYPE=Release \\
                 -GNinja \\
-                -DCMAKE_TOOLCHAIN_FILE=\${PWD}/macos_toolchain.cmake \\
                 -DJPEGXL_STATIC=ON \\
-                -DBUILD_SHARED_LIBS=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \\
                 -DJPEGXL_ENABLE_JPEGLI=ON \\
                 -DJPEGXL_ENABLE_MANPAGES=OFF \\
@@ -101,9 +79,8 @@ jobs:
                 -DTHREADS_PREFER_PTHREAD_FLAG=ON \\
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \\
                 -DCMAKE_MODULE_PATH='\${PWD}/cmake_local/modules' \\
-                -DCMAKE_CXX_STANDARD=17 \\
-                -DCMAKE_POSITION_INDEPENDENT_CODE=ON \\
-                -DJPEGXL_FORCE_SYSTEM_BROTLI=OFF && \\
+                -DCMAKE_MACOSX_RPATH=OFF \\
+                -DBUILD_SHARED_LIBS=OFF && \\
               cmake --build \${PWD}/build -- cjxl djxl
             "
           else
@@ -114,13 +91,12 @@ jobs:
             export CFLAGS="-target arm64-apple-macos11"
             export CXXFLAGS="-target arm64-apple-macos11 -std=c++17"
             export CMAKE_OSX_ARCHITECTURES="arm64"
+            export CMAKE_PREFIX_PATH="${PWD}/cmake_local/modules"
             
             cmake -B${PWD}/build -H${PWD} \
               -DCMAKE_BUILD_TYPE=Release \
               -GNinja \
-              -DCMAKE_TOOLCHAIN_FILE=${PWD}/macos_toolchain.cmake \
               -DJPEGXL_STATIC=ON \
-              -DBUILD_SHARED_LIBS=OFF \
               -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
               -DJPEGXL_ENABLE_JPEGLI=ON \
               -DJPEGXL_ENABLE_MANPAGES=OFF \
@@ -137,12 +113,10 @@ jobs:
               -DTHREADS_PREFER_PTHREAD_FLAG=ON \
               -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
               -DCMAKE_MODULE_PATH="${PWD}/cmake_local/modules" \
-              -DCMAKE_CXX_STANDARD=17 \
-              -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-              -DJPEGXL_FORCE_SYSTEM_BROTLI=OFF && \
+              -DCMAKE_MACOSX_RPATH=OFF \
+              -DBUILD_SHARED_LIBS=OFF && \
             cmake --build ${PWD}/build -- cjxl djxl
           fi
-      # Rest of the workflow remains the same...
       - name: Calculate checksum
         run: |
           shasum -a 256 build/tools/cjxl
